@@ -6,7 +6,7 @@ import { FeedFilterTabs } from './components/feed/FeedFilterTabs';
 import { PostCard } from './components/feed/PostCard';
 import { SubmitTrackModal } from './components/modals/SubmitTrackModal';
 import { useFingerprint } from './hooks/useFingerprint';
-import { boardAPI, spotifyAPI } from './api/client';
+import { boardAPI } from './api/client';
 import { Loader2, Music, AlertCircle } from 'lucide-react';
 
 const DEFAULT_BOARD_SLUG = 'global-discoveries';
@@ -19,7 +19,7 @@ export default function App() {
   const [activeSort, setActiveSort] = useState('top');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Playlist Queue State
+  // Saved Tracks Queue State (Right Sidebar)
   const [playlistTracks, setPlaylistTracks] = useState([]);
 
   const [page, setPage] = useState(1);
@@ -101,7 +101,25 @@ export default function App() {
     fetchBoard();
   };
 
-  // Drag and Drop playlist builder handlers
+  // Delete post from Main Feed
+  const handleDeletePost = async (postId) => {
+    // 1. Instant local removal (Optimistic Update)
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+
+    // 2. Also remove from saved tracks if present
+    setPlaylistTracks((prev) => prev.filter((t) => t.id !== postId && t.postId !== postId));
+
+    // 3. Backend deletion API call (if your API client supports it)
+    try {
+      if (boardAPI.deletePost) {
+        await boardAPI.deletePost(postId);
+      }
+    } catch (err) {
+      console.error('Failed to delete post from server:', err);
+    }
+  };
+
+  // Drag and Drop saved tracks handlers
   const handleAddTrack = (track) => {
     setPlaylistTracks((prev) => {
       const exists = prev.some(
@@ -118,40 +136,8 @@ export default function App() {
     );
   };
 
-  const handleCreatePlaylist = async (playlistName) => {
-    const trackUris = playlistTracks
-      .map((t) => t.spotify_uri || (t.spotify_track_id ? `spotify:track:${t.spotify_track_id}` : null))
-      .filter(Boolean);
-
-    if (trackUris.length === 0) {
-      alert('No valid Spotify track IDs found in your list.');
-      return;
-    }
-
-    if (!board?.id) {
-      alert('Board details are not available.');
-      return;
-    }
-
-    try {
-      const response = await spotifyAPI.createPlaylist({
-        name: playlistName,
-        boardId: board.id,
-        trackUris,
-      });
-
-      const playlistUrl = response.data?.playlistUrl;
-      if (playlistUrl) {
-        window.open(playlistUrl, '_blank');
-      }
-
-      setPlaylistTracks([]);
-    } catch (err) {
-      console.error('Failed to create Spotify playlist:', err);
-      const message =
-        err.response?.data?.error || 'Failed to create playlist. Make sure Spotify is connected.';
-      alert(message);
-    }
+  const handleClearSavedTracks = () => {
+    setPlaylistTracks([]);
   };
 
   const filteredPosts = useMemo(() => {
@@ -224,7 +210,7 @@ export default function App() {
                 <p className="text-xs text-reddit-muted max-w-xs">
                   {searchQuery
                     ? 'Try searching for another song title, artist, or vibe.'
-                    : 'Be the first to recommend a song to this board. Tracks with enough upvotes make it to the Spotify playlist!'}
+                    : 'Be the first to recommend a song to this board.'}
                 </p>
                 <button
                   onClick={() => setIsSubmitModalOpen(true)}
@@ -236,7 +222,11 @@ export default function App() {
             ) : (
               <div className="space-y-3">
                 {filteredPosts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onDeletePost={handleDeletePost}
+                  />
                 ))}
 
                 {page < totalPages && !searchQuery && (
@@ -261,13 +251,13 @@ export default function App() {
             )}
           </div>
 
-          {/* Right Sidebar: Drag & Drop Playlist Builder */}
+          {/* Right Sidebar: Drag & Drop Saved Tracks */}
           <RightSidebar
             board={board}
             playlistTracks={playlistTracks}
             onAddTrack={handleAddTrack}
             onRemoveTrack={handleRemoveTrack}
-            onCreatePlaylist={handleCreatePlaylist}
+            onClearAll={handleClearSavedTracks}
           />
         </div>
       </div>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ExternalLink, Disc3, CheckCircle2, Play, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { ExternalLink, Disc3, CheckCircle2, Play, ChevronDown, ChevronUp, GripVertical, Trash2 } from 'lucide-react';
 import { VoteGutter } from './VoteGutter';
 
-export const PostCard = ({ post }) => {
+export const PostCard = ({ post, onDeletePost }) => {
   const [showEmbed, setShowEmbed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -35,6 +35,15 @@ export const PostCard = ({ post }) => {
 
   const handleDragEnd = () => {
     setIsDragging(false);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (window.confirm(`Delete "${post.track_name}"?`)) {
+      if (onDeletePost) {
+        onDeletePost(post.id);
+      }
+    }
   };
 
   return (
@@ -147,15 +156,29 @@ export const PostCard = ({ post }) => {
             {showEmbed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
-          <a
-            href={`https://open.spotify.com/track/${post.spotify_track_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-[#272729] transition-colors ml-auto text-spotify-green"
-          >
-            <span>Open in Spotify</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <a
+              href={`https://open.spotify.com/track/${post.spotify_track_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-[#272729] transition-colors text-spotify-green"
+            >
+              <span>Open in Spotify</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            {/* Delete Post Button */}
+            {onDeletePost && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                title="Delete Post"
+                className="p-1.5 rounded hover:bg-rose-500/10 text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
