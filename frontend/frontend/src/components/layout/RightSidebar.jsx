@@ -1,115 +1,143 @@
-import React from 'react';
-import { Radio, ShieldAlert, CheckCircle, Disc, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { ListMusic, Trash2, PlusCircle, Music2 } from 'lucide-react';
 
-export const RightSidebar = ({ board }) => {
-  if (!board) return null;
+export const RightSidebar = ({
+  playlistTracks = [],
+  onAddTrack,
+  onRemoveTrack,
+}) => {
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const threshold = board.vote_threshold_for_sync || 5;
-  const stats = board.stats || { totalSubmissions: 0, syncedTracksCount: 0 };
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    if (!isDragOver) setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    try {
+      const rawData = e.dataTransfer.getData('application/json');
+      if (!rawData) return;
+      const track = JSON.parse(rawData);
+
+      if (onAddTrack) {
+        onAddTrack(track);
+      }
+    } catch (err) {
+      console.error('Failed to parse dropped track data:', err);
+    }
+  };
 
   return (
-    <aside className="w-72 flex-shrink-0 space-y-3.5 hidden lg:block">
-      {/* 1. About Community Widget */}
-      <div className="bg-reddit-sidebar border border-reddit-border rounded-md overflow-hidden text-xs">
-        <div className="h-10 bg-gradient-to-r from-[#e03d00] to-reddit-orange px-3 flex items-center">
-          <span className="font-bold text-white tracking-wide uppercase text-[11px]">
-            About Board
+    <aside className="w-80 flex-shrink-0 space-y-4 hidden lg:block sticky top-4 select-none">
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`relative rounded-xl overflow-hidden transition-all duration-300 backdrop-blur-md bg-zinc-950/80 border shadow-xl ${
+          isDragOver
+            ? 'border-[#1db954] ring-4 ring-[#1db954]/20 bg-[#121c15]/90 shadow-[#1db954]/10'
+            : 'border-zinc-800/80 hover:border-zinc-700/80'
+        }`}
+      >
+        {/* Sleek Top Banner */}
+        <div className="h-11 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 px-3.5 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2 font-bold text-white tracking-wider uppercase text-[11px]">
+            <div className="p-1 rounded-md bg-black/20 backdrop-blur-sm">
+              <ListMusic className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span>Saved Tracks</span>
+          </div>
+
+          <span className="bg-black/35 backdrop-blur-sm border border-white/10 text-white font-mono px-2.5 py-0.5 rounded-full text-[10px] font-medium tracking-tight">
+            {playlistTracks.length} {playlistTracks.length === 1 ? 'track' : 'tracks'}
           </span>
         </div>
 
-        <div className="p-3.5 space-y-3">
-          <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-reddit-orange" />
-            <h4 className="font-bold text-sm text-reddit-text leading-tight">
-              {board.title}
-            </h4>
-          </div>
-
-          <p className="text-reddit-muted leading-relaxed">
-            {board.description || 'Welcome to this collaborative song discovery board.'}
-          </p>
-
-          <div className="grid grid-cols-2 gap-2 py-2 border-y border-reddit-border/60">
-            <div>
-              <span className="font-bold text-sm text-reddit-text block">
-                {stats.totalSubmissions}
-              </span>
-              <span className="text-[10px] text-reddit-muted">Total Submissions</span>
-            </div>
-            <div>
-              <span className="font-bold text-sm text-spotify-green block">
-                {stats.syncedTracksCount}
-              </span>
-              <span className="text-[10px] text-reddit-muted">Synced to Spotify</span>
-            </div>
-          </div>
-
-          {/* Sync Rule Callout */}
-          <div className="bg-[#181d19] border border-[#27482d] p-2.5 rounded text-[11px] text-[#9eca9f] space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-spotify-green">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>Auto-Sync Threshold</span>
-            </div>
-            <p>
-              Tracks that reach <strong>+{threshold} net upvotes</strong> will be added
-              directly to the connected Spotify playlist.
-            </p>
-          </div>
-
-          {!board.has_spotify_connected && (
-            <a
-              href={`http://localhost:5500/api/spotify/login?boardId=${board.id}`}
-              className="block text-center w-full py-1.5 rounded-full text-xs font-bold bg-[#1db954] hover:bg-[#1aa34a] text-black transition-colors"
+        <div className="p-4 space-y-3.5">
+          {/* Drop Target Box: ONLY visible when no tracks are added */}
+          {playlistTracks.length === 0 && (
+            <div
+              className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 ${
+                isDragOver
+                  ? 'border-[#1db954] bg-[#1db954]/10 text-[#1db954] scale-[0.99]'
+                  : 'border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/70'
+              }`}
             >
-              Connect Host Spotify
-            </a>
+              <div
+                className={`w-10 h-10 mx-auto mb-2.5 rounded-full flex items-center justify-center transition-transform ${
+                  isDragOver ? 'bg-[#1db954]/20 scale-110' : 'bg-zinc-800/80'
+                }`}
+              >
+                <PlusCircle
+                  className={`w-5 h-5 transition-colors ${
+                    isDragOver ? 'text-[#1db954] animate-spin' : 'text-zinc-400'
+                  }`}
+                />
+              </div>
+              <p className="text-[12px] font-semibold tracking-wide">
+                {isDragOver ? 'Drop to add track' : 'Drag tracks here'}
+              </p>
+              <p className="text-[10px] text-zinc-500 mt-1">From Hot, New, or Top feeds</p>
+            </div>
+          )}
+
+          {/* Track List Container */}
+          {playlistTracks.length > 0 && (
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+              {playlistTracks.map((track, index) => (
+                <div
+                  key={track.id || `${track.title}-${index}`}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850/80 transition-all duration-150 group"
+                >
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <span className="text-[11px] font-mono text-zinc-500 w-3 text-right flex-shrink-0">
+                      {index + 1}
+                    </span>
+
+                    {track.cover_url ? (
+                      <img
+                        src={track.cover_url}
+                        alt={track.title}
+                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0 shadow-sm ring-1 ring-white/5 group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0 border border-zinc-700/60">
+                        <Music2 className="w-4 h-4 text-zinc-400" />
+                      </div>
+                    )}
+
+                    <div className="min-w-0 truncate">
+                      <p className="text-zinc-200 font-medium text-xs truncate leading-tight group-hover:text-white transition-colors">
+                        {track.title}
+                      </p>
+                      <p className="text-zinc-500 text-[11px] truncate leading-tight mt-1 font-normal">
+                        {track.artist}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onRemoveTrack && onRemoveTrack(track.id || index)}
+                    title="Remove track"
+                    className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all opacity-40 group-hover:opacity-100 flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-      </div>
-
-      {/* 2. Embedded Playlist Widget */}
-      {board.spotify_playlist_id && (
-        <div className="bg-reddit-sidebar border border-reddit-border rounded-md overflow-hidden text-xs p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-bold text-[11px] uppercase tracking-wide text-reddit-muted flex items-center gap-1.5">
-              <Disc className="w-3.5 h-3.5 text-spotify-green" />
-              Board Playlist
-            </span>
-            <a
-              href={`https://open.spotify.com/playlist/${board.spotify_playlist_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-spotify-green hover:underline flex items-center gap-0.5"
-            >
-              Open <ExternalLink className="w-2.5 h-2.5" />
-            </a>
-          </div>
-
-          <iframe
-            src={`https://open.spotify.com/embed/playlist/${board.spotify_playlist_id}?utm_source=generator&theme=0`}
-            width="100%"
-            height="352"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            className="rounded"
-            title="Board Playlist"
-          />
-        </div>
-      )}
-
-      {/* 3. Community Rules Widget */}
-      <div className="bg-reddit-sidebar border border-reddit-border rounded-md p-3.5 text-xs">
-        <h4 className="font-bold text-[11px] text-reddit-muted uppercase tracking-wide mb-2 flex items-center gap-1.5">
-          <ShieldAlert className="w-3.5 h-3.5 text-reddit-orange" />
-          Submission Rules
-        </h4>
-        <ol className="list-decimal list-inside space-y-1.5 text-reddit-muted text-[11px]">
-          <li>No duplicate tracks on the same board.</li>
-          <li>Check track title and artist accuracy via Spotify search.</li>
-          <li>Upvote songs matching the board's vibe.</li>
-          <li>No spam or vote manipulation.</li>
-        </ol>
       </div>
     </aside>
   );

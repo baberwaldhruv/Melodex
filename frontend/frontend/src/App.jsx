@@ -6,7 +6,7 @@ import { FeedFilterTabs } from './components/feed/FeedFilterTabs';
 import { PostCard } from './components/feed/PostCard';
 import { SubmitTrackModal } from './components/modals/SubmitTrackModal';
 import { useFingerprint } from './hooks/useFingerprint';
-import { boardAPI } from './api/client';
+import { boardAPI, spotifyAPI } from './api/client';
 import { Loader2, Music, AlertCircle } from 'lucide-react';
 
 const DEFAULT_BOARD_SLUG = 'global-discoveries';
@@ -18,6 +18,9 @@ export default function App() {
   const [posts, setPosts] = useState([]);
   const [activeSort, setActiveSort] = useState('top');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Playlist Queue State
+  const [playlistTracks, setPlaylistTracks] = useState([]);
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -98,6 +101,59 @@ export default function App() {
     fetchBoard();
   };
 
+  // Drag and Drop playlist builder handlers
+  const handleAddTrack = (track) => {
+    setPlaylistTracks((prev) => {
+      const exists = prev.some(
+        (t) => (t.id && t.id === track.id) || (t.title === track.title && t.artist === track.artist)
+      );
+      if (exists) return prev;
+      return [...prev, track];
+    });
+  };
+
+  const handleRemoveTrack = (trackIdOrIndex) => {
+    setPlaylistTracks((prev) =>
+      prev.filter((t, idx) => (t.id ? t.id !== trackIdOrIndex : idx !== trackIdOrIndex))
+    );
+  };
+
+  const handleCreatePlaylist = async (playlistName) => {
+    const trackUris = playlistTracks
+      .map((t) => t.spotify_uri || (t.spotify_track_id ? `spotify:track:${t.spotify_track_id}` : null))
+      .filter(Boolean);
+
+    if (trackUris.length === 0) {
+      alert('No valid Spotify track IDs found in your list.');
+      return;
+    }
+
+    if (!board?.id) {
+      alert('Board details are not available.');
+      return;
+    }
+
+    try {
+      const response = await spotifyAPI.createPlaylist({
+        name: playlistName,
+        boardId: board.id,
+        trackUris,
+      });
+
+      const playlistUrl = response.data?.playlistUrl;
+      if (playlistUrl) {
+        window.open(playlistUrl, '_blank');
+      }
+
+      setPlaylistTracks([]);
+    } catch (err) {
+      console.error('Failed to create Spotify playlist:', err);
+      const message =
+        err.response?.data?.error || 'Failed to create playlist. Make sure Spotify is connected.';
+      alert(message);
+    }
+  };
+
   const filteredPosts = useMemo(() => {
     if (!searchQuery.trim()) return posts;
     const q = searchQuery.toLowerCase();
@@ -119,7 +175,7 @@ export default function App() {
       />
 
       <div className="flex-1 w-full flex justify-between items-start">
-        {/* Left Sidebar: Clean feed tabs only */}
+        {/* Left Sidebar */}
         <div className="hidden lg:block shrink-0">
           <LeftSidebar
             activeTab={
@@ -205,8 +261,14 @@ export default function App() {
             )}
           </div>
 
-          {/* Right Sidebar: Board info and rules only */}
-          <RightSidebar board={board} />
+          {/* Right Sidebar: Drag & Drop Playlist Builder */}
+          <RightSidebar
+            board={board}
+            playlistTracks={playlistTracks}
+            onAddTrack={handleAddTrack}
+            onRemoveTrack={handleRemoveTrack}
+            onCreatePlaylist={handleCreatePlaylist}
+          />
         </div>
       </div>
 

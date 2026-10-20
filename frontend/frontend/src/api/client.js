@@ -2,10 +2,9 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5500/api',
-  withCredentials: true, // Sends and receives HTTP-only cookies
+  withCredentials: true,
 });
 
-// Interceptor to inject client device token
 api.interceptors.request.use((config) => {
   const deviceId = localStorage.getItem('jamboard_device_id');
   if (deviceId) {
@@ -32,6 +31,7 @@ export const voteAPI = {
 
 export const spotifyAPI = {
   search: (query) => api.get('/spotify/search', { params: { q: query } }),
+  createPlaylist: (payload) => api.post('/spotify/custom-playlist', payload),
 };
 
 export default api;

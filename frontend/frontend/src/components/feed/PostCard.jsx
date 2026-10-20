@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ExternalLink, Disc3, CheckCircle2, Play, ChevronDown, ChevronUp } from 'lucide-react';
+import { ExternalLink, Disc3, CheckCircle2, Play, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { VoteGutter } from './VoteGutter';
 
 export const PostCard = ({ post }) => {
   const [showEmbed, setShowEmbed] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const formatTimeAgo = (timestamp) => {
     if (!timestamp) return 'recently';
@@ -16,16 +17,50 @@ export const PostCard = ({ post }) => {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  return (
-    <div className="flex bg-reddit-card border border-reddit-border hover:border-[#4d4e50] transition-colors rounded-md mb-2.5 overflow-hidden shadow-sm">
-      {/* 1. Left Voting Gutter */}
-      <VoteGutter
-        postId={post.id}
-        initialScore={post.score || 0}
-        initialUserVote={post.user_vote || 0}
-      />
+  const handleDragStart = (e) => {
+    setIsDragging(true);
+    const trackPayload = {
+      id: post.spotify_track_id || post.id,
+      postId: post.id,
+      title: post.track_name,
+      artist: post.artist_name,
+      cover_url: post.album_art_url,
+      spotify_uri: post.spotify_track_id ? `spotify:track:${post.spotify_track_id}` : null,
+      spotify_track_id: post.spotify_track_id,
+    };
 
-      {/* 2. Main Card Content */}
+    e.dataTransfer.setData('application/json', JSON.stringify(trackPayload));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className={`group/card flex bg-reddit-card border border-reddit-border hover:border-[#4d4e50] transition-all rounded-md mb-2.5 overflow-hidden shadow-sm cursor-grab active:cursor-grabbing select-none ${
+        isDragging ? 'opacity-40 border-dashed border-reddit-orange scale-[0.99]' : ''
+      }`}
+    >
+      {/* Drag Gripper */}
+      <div className="w-4 flex items-center justify-center text-zinc-600 group-hover/card:text-zinc-400 transition-colors bg-black/10">
+        <GripVertical className="w-3.5 h-3.5" />
+      </div>
+
+      {/* Left Voting Gutter */}
+      <div onClick={(e) => e.stopPropagation()} className="cursor-default">
+        <VoteGutter
+          postId={post.id}
+          initialScore={post.score || 0}
+          initialUserVote={post.user_vote || 0}
+        />
+      </div>
+
+      {/* Main Card Content */}
       <div className="flex-1 p-3 flex flex-col justify-between">
         <div>
           {/* Header Metadata */}
@@ -54,7 +89,7 @@ export const PostCard = ({ post }) => {
               <img
                 src={post.album_art_url}
                 alt={post.album_name || post.track_name}
-                className="w-14 h-14 rounded object-cover flex-shrink-0 shadow border border-[#2b2b2b]"
+                className="w-14 h-14 rounded object-cover flex-shrink-0 shadow border border-[#2b2b2b] pointer-events-none"
                 loading="lazy"
               />
             ) : (
@@ -80,9 +115,12 @@ export const PostCard = ({ post }) => {
           </div>
         </div>
 
-        {/* Embedded Spotify Track Player (Expandable) */}
+        {/* Embedded Spotify Track Player */}
         {showEmbed && post.spotify_track_id && (
-          <div className="mt-3 overflow-hidden rounded-md border border-[#2c2d30]">
+          <div
+            className="mt-3 overflow-hidden rounded-md border border-[#2c2d30] cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <iframe
               src={`https://open.spotify.com/embed/track/${post.spotify_track_id}?utm_source=generator&theme=0`}
               width="100%"
@@ -96,7 +134,10 @@ export const PostCard = ({ post }) => {
         )}
 
         {/* Actions Row */}
-        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-[#252729] text-xs font-semibold text-reddit-muted">
+        <div
+          className="flex items-center gap-2 mt-3 pt-2 border-t border-[#252729] text-xs font-semibold text-reddit-muted cursor-default"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={() => setShowEmbed(!showEmbed)}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded hover:bg-[#272729] transition-colors"
