@@ -1,12 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5500/api';
-
 const api = axios.create({
-  baseURL: API_BASE,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5500/api',
+  withCredentials: true, // Sends and receives HTTP-only cookies
 });
 
 // Interceptor to inject client device token
@@ -18,9 +14,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export const authAPI = {
+  getMe: () => api.get('/auth/me'),
+  logout: () => api.post('/auth/logout'),
+};
+
 export const boardAPI = {
   getBoard: (identifier) => api.get(`/boards/${identifier}`),
-  getFeed: (boardId, sort = 'hot', page = 1) => 
+  getFeed: (boardId, sort = 'hot', page = 1) =>
     api.get(`/boards/${boardId}/posts`, { params: { sort, page } }),
   submitTrack: (boardId, payload) => api.post(`/boards/${boardId}/posts`, payload),
 };

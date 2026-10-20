@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const apiRoutes = require('./routes');
@@ -15,18 +16,15 @@ app.use(
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
-
-// 2. CORS Configuration
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
+const clientOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: clientOrigin,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Device-Id'],
-    credentials: true,
   })
 );
-
 // 3. HTTP Request Logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -34,7 +32,8 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// 4. Body Parsers
+// 4. Parsers (Cookie parser MUST be before routes to populate req.cookies)
+app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 

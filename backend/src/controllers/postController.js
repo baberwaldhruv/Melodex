@@ -110,12 +110,13 @@ const createPost = async (req, res, next) => {
 };
 
 /**
- * Fetch feed of posts for a board with Hot / Top / New sorting
- * GET /api/boards/:boardId/posts?sort=hot&page=1&limit=25
+ * Fetch feed of posts for a board with Hot / Top / New sorting and search
+ * GET /api/boards/:boardId/posts?sort=hot&page=1&limit=25&search=query
  */
 const getFeed = async (req, res, next) => {
   const { boardId } = req.params;
   const sort = (req.query.sort || 'hot').toLowerCase();
+  const search = (req.query.search || '').trim();
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 25));
   const from = (page - 1) * limit;
@@ -127,6 +128,12 @@ const getFeed = async (req, res, next) => {
       .from('posts')
       .select('*, votes(vote_type, voter_hash)', { count: 'exact' })
       .eq('board_id', boardId);
+
+    // Apply DB search filter across track_name, artist_name, and vibe_tag
+    if (search.length > 0) {
+      const term = `%${search}%`;
+      query = query.or(`track_name.ilike.${term},artist_name.ilike.${term},vibe_tag.ilike.${term}`);
+    }
 
     // Apply sorting
     if (sort === 'top') {
